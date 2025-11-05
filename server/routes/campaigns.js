@@ -37,12 +37,21 @@ const upload = multer({
 // Create campaign
 router.post('/', [
   auth,
-  upload.array('images', 5),
+  upload.fields([
+    { name: 'images', maxCount: 5 },
+    { name: 'documents', maxCount: 10 }
+  ]),
   body('title').trim().isLength({ min: 10 }).withMessage('Title must be at least 10 characters'),
   body('description').trim().isLength({ min: 50 }).withMessage('Description must be at least 50 characters'),
   body('targetAmount').isFloat({ min: 1 }).withMessage('Target amount must be at least 1'),
   body('category').isIn(['tuition', 'books', 'accommodation', 'research', 'other']).withMessage('Invalid category'),
-  body('deadline').isISO8601().withMessage('Invalid deadline date')
+  body('deadline').isISO8601().withMessage('Invalid deadline date'),
+  // New validation for verification fields
+  body('institutionName').trim().isLength({ min: 2 }).withMessage('Institution name is required'),
+  body('studentId').trim().isLength({ min: 1 }).withMessage('Student ID is required'),
+  body('academicPeriod').trim().isLength({ min: 2 }).withMessage('Academic period is required'),
+  body('totalFees').isFloat({ min: 0 }).withMessage('Total fees must be a valid number'),
+  body('amountPaid').isFloat({ min: 0 }).withMessage('Amount paid must be a valid number')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -61,17 +70,97 @@ router.post('/', [
       return res.status(400).json({ message: 'Please complete your student profile first' });
     }
 
-    const { title, description, targetAmount, category, deadline, currency } = req.body;
+    const { 
+      title, 
+      description, 
+      targetAmount, 
+      category, 
+      deadline, 
+      currency,
+      // New verification fields
+      institutionName,
+      studentId,
+      academicPeriod,
+      totalFees,
+      amountPaid,
+      paymentInstructions,
+      paymentVerified
+    } = req.body;
+
+    // Calculate outstanding balance
+    const outstandingBalance = parseFloat(totalFees) - parseFloat(amountPaid);
+
+    // Process uploaded files
+    const images = req.files['images'] ? req.files['images'].map(file => ({ 
+      url: `/uploads/${file.filename}`,
+      isVerificationDoc: false
+    })) : [];
+
+    const documents = req.files['documents'] ? req.files['documents'].map(file => {
+      // Determine document type based on filename or other logic
+      let documentType = 'other';
+      const fileName = file.originalname.toLowerCase();
+      
+      if (fileName.includes('fee') || fileName.includes('invoice') || fileName.includes('statement')) {
+        documentType = 'fee_statement';
+      } else if (fileName.includes('student') || fileName.includes('id') || fileName.includes('card')) {
+        documentType = 'student_id';
+      } else if (fileName.includes('admission') || fileName.includes('enrollment') || fileName.includes('acceptance')) {
+        documentType = 'admission_letter';
+      }
+
+      return {
+        documentType,
+        fileName: file.originalname,
+        fileUrl: `/uploads/${file.filename}`,
+        uploadedAt: new Date(),
+        verificationStatus: 'pending'
+      };
+    }) : [];
 
     const campaign = new Campaign({
       student: req.user.id,
       title,
       description,
-      targetAmount,
+      targetAmount: parseFloat(targetAmount),
       category,
       deadline,
       currency: currency || 'USD',
-      images: req.files ? req.files.map(file => ({ url: `/uploads/${file.filename}` })) : []
+      
+      // Institution verification details
+      institutionDetails: {
+        institutionName,
+        studentId,
+        academicPeriod
+      },
+      
+      // Fee structure
+      feeStructure: {
+        totalFees: parseFloat(totalFees),
+        amountPaid: parseFloat(amountPaid),
+        outstandingBalance: outstandingBalance
+      },
+      
+      // Payment instructions
+      paymentInstructions: {
+        instructions: paymentInstructions,
+        paymentVerified: paymentVerified === 'true' || paymentVerified === true
+      },
+      
+      // Documents and images
+      verificationDocuments: documents,
+      images: images,
+      
+      // Initial verification status
+      verificationStatus: {
+        studentVerified: false,
+        documentsVerified: false,
+        institutionVerified: false,
+        financialsVerified: false,
+        overallStatus: 'pending'
+      },
+      
+      status: 'under_review'
     });
 
     await campaign.save();
@@ -94,14 +183,17 @@ router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 10, category, status, search } = req.query;
     
-    const query = { status: 'active', isVerified: true };
+    const query = { 
+      status: status || 'active', 
+      'verificationStatus.overallStatus': 'verified' 
+    };
     
     if (category) query.category = category;
-    if (status) query.status = status;
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+        { description: { $regex: search, $options: 'i' } },
+        { 'institutionDetails.institutionName': { $regex: search, $options: 'i' } }
       ];
     }
 
@@ -130,13 +222,7 @@ router.get('/:id', async (req, res) => {
   try {
     const campaign = await Campaign.findById(req.params.id)
       .populate('student', 'name email')
-      .populate({
-        path: 'student',
-        populate: {
-          path: 'studentProfile',
-          model: 'StudentProfile'
-        }
-      });
+      .populate('verificationHistory.performedBy', 'name email');
 
     if (!campaign) {
       return res.status(404).json({ message: 'Campaign not found' });
@@ -176,13 +262,86 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    // Only allow updates to certain fields
+    const allowedUpdates = [
+      'title', 'description', 'targetAmount', 'category', 'deadline',
+      'institutionDetails', 'feeStructure', 'paymentInstructions'
+    ];
+    
     const updates = req.body;
     Object.keys(updates).forEach(key => {
-      campaign[key] = updates[key];
+      if (allowedUpdates.includes(key)) {
+        campaign[key] = updates[key];
+      }
     });
+
+    // Recalculate outstanding balance if fee structure changed
+    if (updates.feeStructure) {
+      campaign.feeStructure.outstandingBalance = 
+        campaign.feeStructure.totalFees - campaign.feeStructure.amountPaid;
+    }
 
     await campaign.save();
     res.json({ message: 'Campaign updated successfully', campaign });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin route to verify campaign
+router.put('/:id/verify', auth, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) {
+      return res.status(404).json({ message: 'Campaign not found' });
+    }
+
+    const { 
+      studentVerified, 
+      documentsVerified, 
+      institutionVerified, 
+      financialsVerified,
+      verificationNotes 
+    } = req.body;
+
+    // Update verification status
+    if (studentVerified !== undefined) campaign.verificationStatus.studentVerified = studentVerified;
+    if (documentsVerified !== undefined) campaign.verificationStatus.documentsVerified = documentsVerified;
+    if (institutionVerified !== undefined) campaign.verificationStatus.institutionVerified = institutionVerified;
+    if (financialsVerified !== undefined) campaign.verificationStatus.financialsVerified = financialsVerified;
+    
+    // Update overall status
+    if (campaign.verificationStatus.studentVerified && 
+        campaign.verificationStatus.documentsVerified && 
+        campaign.verificationStatus.institutionVerified && 
+        campaign.verificationStatus.financialsVerified) {
+      campaign.verificationStatus.overallStatus = 'verified';
+      campaign.isVerified = true;
+      campaign.status = 'active';
+    } else {
+      campaign.verificationStatus.overallStatus = 'under_review';
+    }
+
+    if (verificationNotes) campaign.verificationNotes = verificationNotes;
+
+    // Add to verification history
+    campaign.verificationHistory.push({
+      action: 'Verification update',
+      performedBy: req.user.id,
+      notes: verificationNotes || 'Verification status updated'
+    });
+
+    await campaign.save();
+    
+    await campaign.populate('verificationHistory.performedBy', 'name email');
+    
+    res.json({ message: 'Campaign verification updated successfully', campaign });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

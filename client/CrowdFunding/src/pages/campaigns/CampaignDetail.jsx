@@ -16,6 +16,7 @@ const CampaignDetail = () => {
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [message, setMessage] = useState('');
+  const [activeTab, setActiveTab] = useState('updates');
 
   useEffect(() => {
     dispatch(fetchCampaign(id));
@@ -79,6 +80,16 @@ const CampaignDetail = () => {
   const progress = (currentCampaign.currentAmount / currentCampaign.targetAmount) * 100;
   const daysLeft = Math.ceil((new Date(currentCampaign.deadline) - new Date()) / (1000 * 60 * 60 * 24));
 
+  // Verification badges
+  const VerificationBadge = ({ verified, label }) => (
+    <div className={`flex items-center space-x-2 ${verified ? 'text-green-600' : 'text-gray-400'}`}>
+      <svg className={`w-5 h-5 ${verified ? 'text-green-500' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+      </svg>
+      <span className="text-sm">{label}</span>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 max-w-6xl">
@@ -124,11 +135,41 @@ const CampaignDetail = () => {
                   }`}>
                     {currentCampaign.status.replace('_', ' ')}
                   </span>
+                  {currentCampaign.verificationStatus?.overallStatus === 'verified' && (
+                    <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                      ✅ Verified
+                    </span>
+                  )}
                 </div>
 
                 <h1 className="text-3xl font-bold text-gray-800 mb-4">
                   {currentCampaign.title}
                 </h1>
+
+                {/* Verification Status */}
+                {currentCampaign.verificationStatus && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <h3 className="font-semibold text-blue-800 mb-3">Verification Status</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <VerificationBadge 
+                        verified={currentCampaign.verificationStatus.studentVerified} 
+                        label="Student Verified" 
+                      />
+                      <VerificationBadge 
+                        verified={currentCampaign.verificationStatus.documentsVerified} 
+                        label="Documents Verified" 
+                      />
+                      <VerificationBadge 
+                        verified={currentCampaign.verificationStatus.institutionVerified} 
+                        label="Institution Verified" 
+                      />
+                      <VerificationBadge 
+                        verified={currentCampaign.verificationStatus.financialsVerified} 
+                        label="Financials Verified" 
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center mb-6">
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-3">
@@ -167,10 +208,10 @@ const CampaignDetail = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-2xl font-bold text-gray-800">
-                        ${currentCampaign.currentAmount.toLocaleString()}
+                        ${currentCampaign.currentAmount?.toLocaleString() || '0'}
                       </span>
                       <span className="text-gray-600">
-                        of ${currentCampaign.targetAmount.toLocaleString()}
+                        of ${currentCampaign.targetAmount?.toLocaleString()}
                       </span>
                     </div>
                     <div className="text-center text-sm text-gray-500 mt-1">
@@ -180,16 +221,21 @@ const CampaignDetail = () => {
 
                   <div className="text-center mb-4">
                     <p className="text-gray-600 mb-2">
-                      {campaignDonations.length} people have donated
+                      {campaignDonations?.length || 0} people have donated
                     </p>
                   </div>
 
                   <button
                     onClick={() => setShowDonationModal(true)}
-                    disabled={currentCampaign.status !== 'active'}
+                    disabled={currentCampaign.status !== 'active' || currentCampaign.verificationStatus?.overallStatus !== 'verified'}
                     className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition duration-300 font-semibold text-lg"
                   >
-                    {currentCampaign.status === 'active' ? 'Support This Campaign' : 'Campaign Ended'}
+                    {currentCampaign.status === 'active' && currentCampaign.verificationStatus?.overallStatus === 'verified' 
+                      ? 'Support This Campaign' 
+                      : currentCampaign.verificationStatus?.overallStatus !== 'verified'
+                      ? 'Under Verification'
+                      : 'Campaign Ended'
+                    }
                   </button>
 
                   <p className="text-center text-gray-500 text-sm mt-3">
@@ -201,115 +247,205 @@ const CampaignDetail = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Campaign Updates */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Campaign Updates</h2>
-              
-              {currentCampaign.updates && currentCampaign.updates.length > 0 ? (
-                <div className="space-y-6">
-                  {currentCampaign.updates.map((update, index) => (
-                    <div key={index} className="border-l-4 border-blue-500 pl-4 py-2">
-                      <h3 className="font-semibold text-gray-800 mb-1">{update.title}</h3>
-                      <p className="text-gray-600 mb-2">{update.description}</p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(update.date).toLocaleDateString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-4">
-                  No updates yet. Check back later!
-                </p>
-              )}
-            </div>
-
-            {/* Recent Donations */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Recent Supporters</h2>
-              
-              {campaignDonations.length > 0 ? (
-                <div className="space-y-4">
-                  {campaignDonations.slice(0, 10).map(donation => (
-                    <div key={donation._id} className="flex items-center justify-between py-3 border-b border-gray-100">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                          {donation.isAnonymous ? (
-                            <span className="text-blue-600 text-sm font-medium">A</span>
-                          ) : (
-                            <span className="text-blue-600 text-sm font-medium">
-                              {donation.donor?.name?.charAt(0) || 'D'}
-                            </span>
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-800">
-                            {donation.isAnonymous ? 'Anonymous Donor' : donation.donor?.name}
-                          </p>
-                          {donation.message && (
-                            <p className="text-gray-600 text-sm">"{donation.message}"</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-green-600">${donation.amount}</p>
-                        <p className="text-gray-500 text-sm">
-                          {new Date(donation.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-4">
-                  Be the first to support this campaign!
-                </p>
-              )}
-            </div>
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-lg shadow-md mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px">
+              <button
+                onClick={() => setActiveTab('updates')}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                  activeTab === 'updates'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Campaign Updates
+              </button>
+              <button
+                onClick={() => setActiveTab('verification')}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                  activeTab === 'verification'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Verification Details
+              </button>
+              <button
+                onClick={() => setActiveTab('supporters')}
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                  activeTab === 'supporters'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Supporters
+              </button>
+            </nav>
           </div>
 
-          {/* Student Information */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-md p-6 sticky top-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">About the Student</h2>
-              
-              {currentCampaign.student?.studentProfile ? (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-1">School</h3>
-                    <p className="text-gray-600">{currentCampaign.student.studentProfile.school.name}</p>
+          <div className="p-6">
+            {activeTab === 'updates' && (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">Campaign Updates</h2>
+                {currentCampaign.updates && currentCampaign.updates.length > 0 ? (
+                  <div className="space-y-6">
+                    {currentCampaign.updates.map((update, index) => (
+                      <div key={index} className="border-l-4 border-blue-500 pl-4 py-2">
+                        <h3 className="font-semibold text-gray-800 mb-1">{update.title}</h3>
+                        <p className="text-gray-600 mb-2">{update.description}</p>
+                        <p className="text-sm text-gray-500">
+                          {new Date(update.date).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                  
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-1">Course</h3>
-                    <p className="text-gray-600">{currentCampaign.student.studentProfile.course.name}</p>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-1">Year of Study</h3>
-                    <p className="text-gray-600">Year {currentCampaign.student.studentProfile.yearOfStudy}</p>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">
+                    No updates yet. Check back later!
+                  </p>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'verification' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Institution Details */}
+                  <div className="bg-blue-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-blue-800 mb-4">🏫 Institution Details</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-blue-700">Institution</label>
+                        <p className="text-blue-900">{currentCampaign.institutionDetails?.institutionName || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-blue-700">Student ID</label>
+                        <p className="text-blue-900">{currentCampaign.institutionDetails?.studentId || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-blue-700">Academic Period</label>
+                        <p className="text-blue-900">{currentCampaign.institutionDetails?.academicPeriod || 'Not provided'}</p>
+                      </div>
+                    </div>
                   </div>
 
-                  {currentCampaign.student.studentProfile.bio && (
-                    <div>
-                      <h3 className="font-semibold text-gray-700 mb-1">Bio</h3>
-                      <p className="text-gray-600">{currentCampaign.student.studentProfile.bio}</p>
+                  {/* Financial Details */}
+                  <div className="bg-green-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-green-800 mb-4">💰 Financial Details</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-green-700">Total Fees:</span>
+                        <span className="font-semibold text-green-900">
+                          ${currentCampaign.feeStructure?.totalFees?.toLocaleString() || '0'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-green-700">Amount Paid:</span>
+                        <span className="font-semibold text-green-900">
+                          ${currentCampaign.feeStructure?.amountPaid?.toLocaleString() || '0'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-t border-green-200 pt-2">
+                        <span className="text-green-700 font-semibold">Outstanding Balance:</span>
+                        <span className="font-bold text-green-900">
+                          ${currentCampaign.feeStructure?.outstandingBalance?.toLocaleString() || '0'}
+                        </span>
+                      </div>
                     </div>
-                  )}
-
-                  {currentCampaign.student.studentProfile.futureGoals && (
-                    <div>
-                      <h3 className="font-semibold text-gray-700 mb-1">Future Goals</h3>
-                      <p className="text-gray-600">{currentCampaign.student.studentProfile.futureGoals}</p>
-                    </div>
-                  )}
+                  </div>
                 </div>
-              ) : (
-                <p className="text-gray-500">Student information not available.</p>
-              )}
-            </div>
+
+                {/* Payment Instructions */}
+                {currentCampaign.paymentInstructions?.instructions && (
+                  <div className="bg-purple-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-purple-800 mb-4">🏦 Payment Instructions</h3>
+                    <p className="text-purple-900 whitespace-pre-wrap">
+                      {currentCampaign.paymentInstructions.instructions}
+                    </p>
+                    {currentCampaign.paymentInstructions.paymentVerified && (
+                      <div className="flex items-center mt-3 text-green-600">
+                        <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm font-medium">Payment methods verified by institution</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Verification Documents */}
+                {currentCampaign.verificationDocuments && currentCampaign.verificationDocuments.length > 0 && (
+                  <div className="bg-yellow-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-yellow-800 mb-4">📄 Verification Documents</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {currentCampaign.verificationDocuments.map((doc, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-white rounded border">
+                          <div className="flex items-center">
+                            <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span className="text-sm text-gray-700 capitalize">
+                              {doc.documentType.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            doc.verificationStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                            doc.verificationStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {doc.verificationStatus}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'supporters' && (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">Recent Supporters</h2>
+                {campaignDonations && campaignDonations.length > 0 ? (
+                  <div className="space-y-4">
+                    {campaignDonations.slice(0, 10).map(donation => (
+                      <div key={donation._id} className="flex items-center justify-between py-3 border-b border-gray-100">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                            {donation.isAnonymous ? (
+                              <span className="text-blue-600 text-sm font-medium">A</span>
+                            ) : (
+                              <span className="text-blue-600 text-sm font-medium">
+                                {donation.donor?.name?.charAt(0) || 'D'}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-800">
+                              {donation.isAnonymous ? 'Anonymous Donor' : donation.donor?.name}
+                            </p>
+                            {donation.message && (
+                              <p className="text-gray-600 text-sm">"{donation.message}"</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-green-600">${donation.amount}</p>
+                          <p className="text-gray-500 text-sm">
+                            {new Date(donation.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-4">
+                    Be the first to support this campaign!
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -40,6 +40,10 @@ const userSchema = new mongoose.Schema({
     state: String,
     country: String,
     zipCode: String
+  },
+   studentProfile: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'StudentProfile'
   }
 }, {
   timestamps: true

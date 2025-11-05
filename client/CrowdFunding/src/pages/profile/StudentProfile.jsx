@@ -17,25 +17,50 @@ const StudentProfile = () => {
     setError('');
 
     try {
-      // You'll need to create this API endpoint in your backend
+      // Structure the data to match the StudentProfile model exactly
+      const profileData = {
+        // user field is automatically handled by backend via auth middleware
+        studentId: data.studentId,
+        dateOfBirth: data.dateOfBirth,
+        gender: data.gender,
+        school: {
+          name: data.schoolName,
+          address: data.schoolAddress,
+          type: data.schoolType
+        },
+        course: {
+          name: data.courseName,
+          duration: data.courseDuration,
+          yearOfStudy: parseInt(data.yearOfStudy)
+        },
+        bio: data.bio,
+        academicPerformance: data.academicPerformance,
+        futureGoals: data.futureGoals
+        // academicDocuments will be handled separately via file upload
+      };
+
+      console.log('Submitting profile data:', profileData);
+
       const response = await fetch('/api/students/profile', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(profileData)
       });
 
       const result = await response.json();
 
       if (response.ok) {
-        navigate('/create-campaign'); // Redirect to campaign creation
+        navigate('/create-campaign');
       } else {
         setError(result.message || 'Failed to create profile');
+        console.error('Server error:', result);
       }
     } catch (err) {
       setError('Network error. Please try again.');
+      console.error('Request error:', err);
     } finally {
       setLoading(false);
     }
@@ -63,7 +88,11 @@ const StudentProfile = () => {
               <input
                 type="text"
                 {...register('studentId', { 
-                  required: 'Student ID is required'
+                  required: 'Student ID is required',
+                  minLength: {
+                    value: 3,
+                    message: 'Student ID must be at least 3 characters'
+                  }
                 })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter your student ID"
@@ -73,94 +102,172 @@ const StudentProfile = () => {
               )}
             </div>
 
-            {/* Date of Birth */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date of Birth *
-              </label>
-              <input
-                type="date"
-                {...register('dateOfBirth', { 
-                  required: 'Date of birth is required'
-                })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {errors.dateOfBirth && (
-                <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth.message}</p>
-              )}
-            </div>
-
-            {/* School Information */}
+            {/* Personal Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  School Name *
+                  Date of Birth *
                 </label>
                 <input
-                  type="text"
-                  {...register('school.name', { 
-                    required: 'School name is required'
+                  type="date"
+                  {...register('dateOfBirth', { 
+                    required: 'Date of birth is required'
                   })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="University name"
                 />
+                {errors.dateOfBirth && (
+                  <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth.message}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  School Type *
+                  Gender *
                 </label>
                 <select
-                  {...register('school.type', { required: 'School type is required' })}
+                  {...register('gender', { required: 'Gender is required' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Select type</option>
-                  <option value="university">University</option>
-                  <option value="college">College</option>
-                  <option value="high-school">High School</option>
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
                   <option value="other">Other</option>
                 </select>
+                {errors.gender && (
+                  <p className="mt-1 text-sm text-red-600">{errors.gender.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* School Information */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">School Information</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    School Name *
+                  </label>
+                  <input
+                    type="text"
+                    {...register('schoolName', { 
+                      required: 'School name is required'
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="University name"
+                  />
+                  {errors.schoolName && (
+                    <p className="mt-1 text-sm text-red-600">{errors.schoolName.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    School Type *
+                  </label>
+                  <select
+                    {...register('schoolType', { required: 'School type is required' })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select type</option>
+                    <option value="university">University</option>
+                    <option value="college">College</option>
+                    <option value="high-school">High School</option>
+                    <option value="other">Other</option>
+                  </select>
+                  {errors.schoolType && (
+                    <p className="mt-1 text-sm text-red-600">{errors.schoolType.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  School Address
+                </label>
+                <input
+                  type="text"
+                  {...register('schoolAddress')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Full school address"
+                />
               </div>
             </div>
 
             {/* Course Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Course Name *
-                </label>
-                <input
-                  type="text"
-                  {...register('course.name', { 
-                    required: 'Course name is required'
-                  })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., Computer Science"
-                />
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">Course Information</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Course Name *
+                  </label>
+                  <input
+                    type="text"
+                    {...register('courseName', { 
+                      required: 'Course name is required'
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., Computer Science"
+                  />
+                  {errors.courseName && (
+                    <p className="mt-1 text-sm text-red-600">{errors.courseName.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Course Duration
+                  </label>
+                  <input
+                    type="text"
+                    {...register('courseDuration')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., 4 years, 2 semesters"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Year of Study *
-                </label>
-                <select
-                  {...register('yearOfStudy', { required: 'Year of study is required' })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select year</option>
-                  <option value="1">Year 1</option>
-                  <option value="2">Year 2</option>
-                  <option value="3">Year 3</option>
-                  <option value="4">Year 4</option>
-                  <option value="5">Year 5+</option>
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Year of Study *
+                  </label>
+                  <select
+                    {...register('yearOfStudy', { required: 'Year of study is required' })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select year</option>
+                    <option value="1">Year 1</option>
+                    <option value="2">Year 2</option>
+                    <option value="3">Year 3</option>
+                    <option value="4">Year 4</option>
+                    <option value="5">Year 5+</option>
+                  </select>
+                  {errors.yearOfStudy && (
+                    <p className="mt-1 text-sm text-red-600">{errors.yearOfStudy.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Academic Performance
+                  </label>
+                  <input
+                    type="text"
+                    {...register('academicPerformance')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., GPA 3.8, First Class Honors"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Additional Information */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Bio (Optional)
+                Bio
               </label>
               <textarea
                 {...register('bio')}
@@ -173,7 +280,7 @@ const StudentProfile = () => {
             {/* Future Goals */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Future Goals (Optional)
+                Future Goals
               </label>
               <textarea
                 {...register('futureGoals')}

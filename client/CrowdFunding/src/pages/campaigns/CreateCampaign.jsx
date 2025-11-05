@@ -12,8 +12,10 @@ const CreateCampaign = () => {
   
   const { register, handleSubmit, formState: { errors }, watch } = useForm();
   const [images, setImages] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [hasProfile, setHasProfile] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
+  const [verificationStep, setVerificationStep] = useState(1);
 
   // Check if student profile exists
   useEffect(() => {
@@ -46,7 +48,9 @@ const CreateCampaign = () => {
     const formData = {
       ...data,
       targetAmount: parseFloat(data.targetAmount),
-      images: images
+      images: images,
+      documents: documents,
+      paymentVerified: data.paymentVerified || false
     };
 
     const result = await dispatch(createCampaign(formData));
@@ -60,6 +64,14 @@ const CreateCampaign = () => {
     setImages(files);
   };
 
+  const handleDocumentChange = (e) => {
+    const files = Array.from(e.target.files);
+    setDocuments(files);
+  };
+
+  const nextStep = () => setVerificationStep(2);
+  const prevStep = () => setVerificationStep(1);
+
   if (user.role !== 'student') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -71,7 +83,6 @@ const CreateCampaign = () => {
     );
   }
 
-  // Show loading while checking profile
   if (checkingProfile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -83,7 +94,6 @@ const CreateCampaign = () => {
     );
   }
 
-  // Redirect to profile creation if no profile exists
   if (!hasProfile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -98,7 +108,7 @@ const CreateCampaign = () => {
           </p>
           <button
             onClick={() => navigate('/student-profile')}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-semibold"
+            className="w-full bg-yellow-300 text-white py-3 px-4 rounded-md hover:bg-yellow-500 transition duration-300 font-semibold"
           >
             Complete Student Profile
           </button>
@@ -111,11 +121,379 @@ const CreateCampaign = () => {
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="container mx-auto px-4 max-w-2xl">
         <div className="bg-white rounded-lg shadow-md p-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-6">Create Your Campaign</h1>
+          <h1 className="text-3xl font-bold text-yellow-500 mb-6">Create Your Campaign</h1>
           
+          {/* Verification Steps Indicator */}
+          <div className="flex items-center justify-between mb-8">
+            <div className={`flex items-center ${verificationStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${verificationStep >= 1 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'}`}>
+                1
+              </div>
+              <span className="ml-2 text-sm font-medium">Campaign Details</span>
+            </div>
+            <div className="flex-1 h-1 bg-gray-200 mx-4"></div>
+            <div className={`flex items-center ${verificationStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${verificationStep >= 2 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'}`}>
+                2
+              </div>
+              <span className="ml-2 text-sm font-medium">Verification</span>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Your existing form fields */}
-            {/* ... */}
+            {verificationStep === 1 && (
+              <>
+                {/* Campaign Title */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Campaign Title *
+                  </label>
+                  <input
+                    type="text"
+                    {...register('title', { 
+                      required: 'Title is required',
+                      minLength: {
+                        value: 10,
+                        message: 'Title must be at least 10 characters'
+                      }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="E.g., Support my Computer Science Degree at University of Technology"
+                  />
+                  {errors.title && (
+                    <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Campaign Description *
+                  </label>
+                  <textarea
+                    {...register('description', { 
+                      required: 'Description is required',
+                      minLength: {
+                        value: 50,
+                        message: 'Description must be at least 50 characters'
+                      }
+                    })}
+                    rows={6}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Tell your story... Why do you need funding? What are your academic goals?"
+                  />
+                  {errors.description && (
+                    <p className="mt-1 text-sm text-red-600">{errors.description.message}</p>
+                  )}
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Funding Category *
+                  </label>
+                  <select
+                    {...register('category', { required: 'Category is required' })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select a category</option>
+                    <option value="tuition">Tuition Fees</option>
+                    <option value="books">Books & Materials</option>
+                    <option value="accommodation">Accommodation</option>
+                    <option value="research">Research Project</option>
+                    <option value="other">Other</option>
+                  </select>
+                  {errors.category && (
+                    <p className="mt-1 text-sm text-red-600">{errors.category.message}</p>
+                  )}
+                </div>
+
+                {/* Target Amount */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Target Amount (USD) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    {...register('targetAmount', { 
+                      required: 'Target amount is required',
+                      min: {
+                        value: 1,
+                        message: 'Target amount must be at least $1'
+                      }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="5000"
+                  />
+                  {errors.targetAmount && (
+                    <p className="mt-1 text-sm text-red-600">{errors.targetAmount.message}</p>
+                  )}
+                </div>
+
+                {/* Deadline */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Campaign Deadline *
+                  </label>
+                  <input
+                    type="date"
+                    {...register('deadline', { 
+                      required: 'Deadline is required',
+                      validate: value => {
+                        const selectedDate = new Date(value);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return selectedDate > today || 'Deadline must be in the future';
+                      }
+                    })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {errors.deadline && (
+                    <p className="mt-1 text-sm text-red-600">{errors.deadline.message}</p>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition duration-300"
+                >
+                  Continue to Verification
+                </button>
+              </>
+            )}
+
+            {verificationStep === 2 && (
+              <>
+                {/* Institution Payment Details */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-blue-800 mb-4">
+                    🎓 Institution Payment Verification
+                  </h3>
+                  <p className="text-blue-700 mb-4">
+                    To prevent fraud and ensure funds are used for educational purposes, 
+                    please provide official payment details from your institution.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Institution Name *
+                      </label>
+                      <input
+                        type="text"
+                        {...register('institutionName', { required: 'Institution name is required' })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Official name of your educational institution"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Student ID Number *
+                      </label>
+                      <input
+                        type="text"
+                        {...register('studentId', { required: 'Student ID is required' })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Your official student identification number"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Academic Year/Semester *
+                      </label>
+                      <input
+                        type="text"
+                        {...register('academicPeriod', { required: 'Academic period is required' })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="E.g., Fall 2024, Academic Year 2024-2025"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fee Structure & Balance */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-green-800 mb-4">
+                    💰 Fee Structure & Outstanding Balance
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Total Fees Due (USD) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        {...register('totalFees', { 
+                          required: 'Total fees amount is required',
+                          min: { value: 1, message: 'Amount must be greater than 0' }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Total amount due"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Already Paid (USD) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        {...register('amountPaid', { 
+                          required: 'Paid amount is required',
+                          min: { value: 0, message: 'Amount cannot be negative' }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Amount you've already paid"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-4 rounded border">
+                    <div className="flex justify-between items-center font-semibold">
+                      <span>Outstanding Balance:</span>
+                      <span className="text-red-600">
+                        ${(watch('totalFees') - watch('amountPaid') || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Official Documents Upload */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-yellow-800 mb-4">
+                    📄 Required Verification Documents
+                  </h3>
+                  <p className="text-yellow-700 mb-4">
+                    Upload official documents to verify your student status and fee requirements.
+                  </p>
+
+                  {/* Fee Statement/Invoice */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Official Fee Statement/Invoice *
+                    </label>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={handleDocumentChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Must show your name, student ID, and detailed fee breakdown
+                    </p>
+                  </div>
+
+                  {/* Student ID */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Student ID Card *
+                    </label>
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png"
+                      onChange={handleDocumentChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Admission Letter (Optional but recommended) */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Admission/Enrollment Letter (Recommended)
+                    </label>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={handleDocumentChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Institution Payment Instructions */}
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-purple-800 mb-4">
+                    🏦 Institution Payment Instructions
+                  </h3>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      How should donors pay the institution directly?
+                    </label>
+                    <textarea
+                      {...register('paymentInstructions')}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Provide official payment methods: Bank transfer details, online payment portal, bursar's office contact, etc."
+                    />
+                  </div>
+
+                  <div className="flex items-center mb-2">
+                    <input
+                      type="checkbox"
+                      {...register('paymentVerified')}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label className="ml-2 block text-sm text-gray-700">
+                      I confirm that the above payment methods are official and verified by my institution
+                    </label>
+                  </div>
+                </div>
+
+                {/* Campaign Images */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Additional Campaign Images (Optional)
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Upload additional images that help tell your story (max 5 images, 5MB each)
+                  </p>
+                </div>
+
+                <div className="flex space-x-4">
+                  <button
+                    type="button"
+                    onClick={prevStep}
+                    className="flex-1 bg-gray-300 text-gray-700 py-3 px-4 rounded-md hover:bg-gray-400 transition duration-300"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 bg-yellow-400 text-white py-3 px-4 rounded-md hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition duration-300"
+                  >
+                    {loading ? 'Creating Campaign...' : 'Create Campaign'}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Error Display */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+                {error.message || 'Something went wrong. Please try again.'}
+              </div>
+            )}
+
+            <p className="text-sm text-gray-600 text-center">
+              Your campaign and verification documents will be reviewed by our team before going live. 
+              This usually takes 24-48 hours.
+            </p>
           </form>
         </div>
       </div>

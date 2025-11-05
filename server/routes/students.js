@@ -58,20 +58,17 @@ router.get('/profile', auth, async (req, res) => {
 // Create or update student profile
 router.post('/profile', [
   auth,
-  upload.fields([
-    { name: 'studentIdCard', maxCount: 1 },
-    { name: 'admissionLetter', maxCount: 1 },
-    { name: 'feeStructure', maxCount: 1 }
-  ]),
+  // Remove upload.fields for now to isolate the issue
   body('studentId').notEmpty().withMessage('Student ID is required'),
   body('dateOfBirth').isISO8601().withMessage('Valid date of birth is required'),
   body('school.name').notEmpty().withMessage('School name is required'),
   body('course.name').notEmpty().withMessage('Course name is required'),
-  body('yearOfStudy').isInt({ min: 1 }).withMessage('Valid year of study is required')
+  body('course.yearOfStudy').isInt({ min: 1 }).withMessage('Valid year of study is required') // Fixed: course.yearOfStudy
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
 
@@ -79,21 +76,29 @@ router.post('/profile', [
       return res.status(403).json({ message: 'Only students can create profiles' });
     }
 
+    console.log('Received data:', req.body);
+
     const {
       studentId,
       dateOfBirth,
       gender,
       school,
       course,
-      yearOfStudy,
       bio,
       academicPerformance,
       futureGoals
     } = req.body;
 
-    // Parse school and course if they are strings
-    const schoolData = typeof school === 'string' ? JSON.parse(school) : school;
-    const courseData = typeof course === 'string' ? JSON.parse(course) : course;
+    // No need to parse - they're already objects from frontend
+    const schoolData = school;
+    const courseData = course;
+
+    // Check if course.yearOfStudy exists and is valid
+    if (!courseData.yearOfStudy) {
+      return res.status(400).json({ 
+        errors: [{ path: 'course.yearOfStudy', message: 'Year of study is required' }] 
+      });
+    }
 
     const profileData = {
       user: req.user.id,
@@ -101,40 +106,16 @@ router.post('/profile', [
       dateOfBirth,
       gender,
       school: schoolData,
-      course: courseData,
-      yearOfStudy: parseInt(yearOfStudy),
+      course: {
+        ...courseData,
+        yearOfStudy: parseInt(courseData.yearOfStudy) // Ensure it's a number
+      },
       bio,
       academicPerformance,
       futureGoals
     };
 
-    // Handle file uploads
-    if (req.files) {
-      if (req.files.studentIdCard) {
-        profileData.academicDocuments = {
-          ...profileData.academicDocuments,
-          studentIdCard: {
-            url: `/uploads/${req.files.studentIdCard[0].filename}`
-          }
-        };
-      }
-      if (req.files.admissionLetter) {
-        profileData.academicDocuments = {
-          ...profileData.academicDocuments,
-          admissionLetter: {
-            url: `/uploads/${req.files.admissionLetter[0].filename}`
-          }
-        };
-      }
-      if (req.files.feeStructure) {
-        profileData.academicDocuments = {
-          ...profileData.academicDocuments,
-          feeStructure: {
-            url: `/uploads/${req.files.feeStructure[0].filename}`
-          }
-        };
-      }
-    }
+    console.log('Processed profile data:', profileData);
 
     // Check if profile already exists
     let studentProfile = await StudentProfile.findOne({ user: req.user.id });
@@ -144,7 +125,7 @@ router.post('/profile', [
       studentProfile = await StudentProfile.findOneAndUpdate(
         { user: req.user.id },
         { $set: profileData },
-        { new: true }
+        { new: true, runValidators: true }
       );
     } else {
       // Create new profile
@@ -159,7 +140,24 @@ router.post('/profile', [
       profile: studentProfile
     });
   } catch (error) {
-    console.error(error);
+    console.error('Profile creation error:', error);
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => ({
+        path: err.path,
+        message: err.message
+      }));
+      return res.status(400).json({ errors });
+    }
+    
+    // Handle duplicate studentId
+    if (error.code === 11000) {
+      return res.status(400).json({ 
+        message: 'Student ID already exists' 
+      });
+    }
+    
     res.status(500).json({ message: 'Server error' });
   }
 });
