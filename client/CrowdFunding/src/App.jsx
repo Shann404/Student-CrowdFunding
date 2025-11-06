@@ -19,6 +19,7 @@ import CreateCampaign from './pages/campaigns/CreateCampaign';
 import Dashboard from './pages/dashboard/Dashboard';
 import Profile from './pages/profile/Profile';
 import StudentProfile from './pages/profile/StudentProfile';
+import AdminDashboard from './pages/dashboard/AdminDashboard';
 
 
 // Protected Route Component
@@ -72,6 +73,14 @@ const AppContent = () => {
     </ProtectedRoute>
   } 
 />
+<Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
             <Route 
               path="/dashboard" 
               element={

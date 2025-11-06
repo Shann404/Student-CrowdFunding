@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchCampaign } from '../../store/slices/campaignSlice';
-import { fetchCampaignDonations, createDonation } from '../../store/slices/donationSlice';
+import { fetchCampaignDonations, createDonation } from '../../store/slices/donationSlice'; // This should work now
 
 const CampaignDetail = () => {
   const { id } = useParams();

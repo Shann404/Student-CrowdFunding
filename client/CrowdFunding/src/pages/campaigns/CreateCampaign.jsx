@@ -16,6 +16,7 @@ const CreateCampaign = () => {
   const [hasProfile, setHasProfile] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [verificationStep, setVerificationStep] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState('bank');
 
   // Check if student profile exists
   useEffect(() => {
@@ -50,7 +51,8 @@ const CreateCampaign = () => {
       targetAmount: parseFloat(data.targetAmount),
       images: images,
       documents: documents,
-      paymentVerified: data.paymentVerified || false
+      paymentVerified: data.paymentVerified || false,
+      paymentMethod: paymentMethod
     };
 
     const result = await dispatch(createCampaign(formData));
@@ -423,26 +425,195 @@ const CreateCampaign = () => {
                     🏦 Institution Payment Instructions
                   </h3>
                   
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      How should donors pay the institution directly?
+                  {/* Payment Method Selection */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Preferred Payment Method *
                     </label>
-                    <textarea
-                      {...register('paymentInstructions')}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Provide official payment methods: Bank transfer details, online payment portal, bursar's office contact, etc."
-                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('bank')}
+                        className={`p-4 border-2 rounded-lg text-center transition-colors ${
+                          paymentMethod === 'bank' 
+                            ? 'border-purple-500 bg-purple-50 text-purple-700' 
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-purple-300'
+                        }`}
+                      >
+                        <div className="font-medium">Bank Transfer</div>
+                        <div className="text-sm text-gray-500 mt-1">Direct bank transfer</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('online')}
+                        className={`p-4 border-2 rounded-lg text-center transition-colors ${
+                          paymentMethod === 'online' 
+                            ? 'border-purple-500 bg-purple-50 text-purple-700' 
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-purple-300'
+                        }`}
+                      >
+                        <div className="font-medium">Online Portal</div>
+                        <div className="text-sm text-gray-500 mt-1">University payment portal</div>
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex items-center mb-2">
+                  {paymentMethod === 'bank' && (
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-purple-700 mb-3">Bank Transfer Details</h4>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Bank Name *
+                          </label>
+                          <input
+                            type="text"
+                            {...register('bankName', { required: paymentMethod === 'bank' ? 'Bank name is required' : false })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., Kenya Commercial Bank"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Branch *
+                          </label>
+                          <input
+                            type="text"
+                            {...register('branch', { required: paymentMethod === 'bank' ? 'Branch is required' : false })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., Main Branch"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Account Name *
+                        </label>
+                        <input
+                          type="text"
+                          {...register('accountName', { required: paymentMethod === 'bank' ? 'Account name is required' : false })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="e.g., University of Nairobi Fees Account"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Account Number *
+                          </label>
+                          <input
+                            type="text"
+                            {...register('accountNumber', { required: paymentMethod === 'bank' ? 'Account number is required' : false })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., 1234567890"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            SWIFT Code *
+                          </label>
+                          <input
+                            type="text"
+                            {...register('swiftCode', { required: paymentMethod === 'bank' ? 'SWIFT code is required' : false })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., KCBKENYA"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Currency *
+                          </label>
+                          <select
+                            {...register('currency', { required: paymentMethod === 'bank' ? 'Currency is required' : false })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Select currency</option>
+                            <option value="USD">USD - US Dollar</option>
+                            <option value="EUR">EUR - Euro</option>
+                            <option value="GBP">GBP - British Pound</option>
+                            <option value="KES">KES - Kenyan Shilling</option>
+                            <option value="UGX">UGX - Ugandan Shilling</option>
+                            <option value="TZS">TZS - Tanzanian Shilling</option>
+                            <option value="ZAR">ZAR - South African Rand</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Reference (Required) *
+                          </label>
+                          <input
+                            type="text"
+                            {...register('paymentReference', { required: paymentMethod === 'bank' ? 'Payment reference is required' : false })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., John Doe - ADM12345"
+                          />
+                          <p className="mt-1 text-sm text-gray-500">
+                            Format: [Student Full Name - Admission Number]
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentMethod === 'online' && (
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-purple-700 mb-3">Online Payment Portal Details</h4>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Payment Portal URL *
+                        </label>
+                        <input
+                          type="url"
+                          {...register('paymentPortalUrl', { required: paymentMethod === 'online' ? 'Payment portal URL is required' : false })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="https://university.edu/payments"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Payment Instructions *
+                        </label>
+                        <textarea
+                          {...register('onlinePaymentInstructions', { required: paymentMethod === 'online' ? 'Payment instructions are required' : false })}
+                          rows={4}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Provide step-by-step instructions for donors on how to make payments through the online portal..."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Reference/Student ID Format *
+                        </label>
+                        <input
+                          type="text"
+                          {...register('onlineReference', { required: paymentMethod === 'online' ? 'Reference format is required' : false })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="e.g., Use Student ID as payment reference"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center mt-6">
                     <input
                       type="checkbox"
                       {...register('paymentVerified')}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
                     <label className="ml-2 block text-sm text-gray-700">
-                      I confirm that the above payment methods are official and verified by my institution
+                      I confirm that the above payment details are official and verified by my institution
                     </label>
                   </div>
                 </div>

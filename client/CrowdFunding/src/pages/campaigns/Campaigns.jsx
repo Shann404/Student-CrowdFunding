@@ -32,30 +32,22 @@ const Campaigns = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">Support Student Dreams</h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Browse through verified student campaigns and help make educational dreams come true.
-          </p>
-        </div>
-
-        {/* Filters */}
+        {/* Enhanced Filters */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             {/* Search */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Search Campaigns</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
               <input
                 type="text"
-                placeholder="Search by title or description..."
+                placeholder="Search campaigns..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
-            {/* Category Filter */}
+            {/* Category */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
               <select
@@ -72,20 +64,65 @@ const Campaigns = () => {
               </select>
             </div>
 
+            {/* School/Institution */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">School</label>
+              <input
+                type="text"
+                placeholder="Filter by school..."
+                value={filters.school}
+                onChange={(e) => handleFilterChange('school', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Amount Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Goal Amount</label>
+              <select
+                value={filters.amountRange}
+                onChange={(e) => handleFilterChange('amountRange', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Any Amount</option>
+                <option value="0-1000">Under $1,000</option>
+                <option value="1000-5000">$1,000 - $5,000</option>
+                <option value="5000-10000">$5,000 - $10,000</option>
+                <option value="10000+">Over $10,000</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Location */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+              <input
+                type="text"
+                placeholder="Filter by location..."
+                value={filters.location}
+                onChange={(e) => handleFilterChange('location', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
             {/* Sort */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
               <select
+                value={filters.sort}
                 onChange={(e) => handleFilterChange('sort', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="createdAt">Newest First</option>
+                <option value="recent">Newest First</option>
                 <option value="currentAmount">Most Funded</option>
                 <option value="deadline">Ending Soon</option>
+                <option value="urgency">Urgent Needs</option>
               </select>
             </div>
           </div>
         </div>
+
 
         {/* Campaigns Grid */}
         {loading ? (

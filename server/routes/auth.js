@@ -64,33 +64,72 @@ router.post('/register', [
 });
 
 // Login
+// Login route - COMPLETE WORKING VERSION
 router.post('/login', [
   body('email').isEmail().withMessage('Please enter a valid email'),
   body('password').exists().withMessage('Password is required')
 ], async (req, res) => {
   try {
+    console.log('Email:', req.body.email);
+    console.log('Password received:', req.body.password ? 'YES' : 'NO');
+
+    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      console.log('Validation errors:', errors.array());
+      return res.status(400).json({ 
+        message: 'Validation failed',
+        errors: errors.array() 
+      });
     }
 
     const { email, password } = req.body;
 
-    // Find user
+    // Find user by email
+    console.log('Searching for user:', email);
     const user = await User.findOne({ email });
+    
     if (!user) {
+      console.log('User not found in database');
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Check password
+    console.log('User found:', user.name, `(${user.role})`);
+    console.log(' Stored password hash length:', user.password.length);
+
+    // Check if user has comparePassword method
+    if (typeof user.comparePassword !== 'function') {
+      console.log('comparePassword method missing from User model');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    // Compare passwords
+    console.log('Comparing passwords...');
     const isMatch = await user.comparePassword(password);
+    console.log('Password match result:', isMatch);
+
     if (!isMatch) {
+      console.log('Password does not match');
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Generate token
-    const token = generateToken(user._id);
+    console.log('Password verified successfully!');
 
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        userId: user._id,
+        email: user.email,
+        role: user.role 
+      },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { expiresIn: '30d' }
+    );
+
+    console.log('Login successful for:', user.email);
+    console.log('Token generated');
+
+    // Send success response
     res.json({
       message: 'Login successful',
       token,
@@ -98,12 +137,17 @@ router.post('/login', [
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        isVerified: user.isVerified
       }
     });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error(' Login route error:', error);
+    res.status(500).json({ 
+      message: 'Server error during login',
+      error: error.message 
+    });
   }
 });
 

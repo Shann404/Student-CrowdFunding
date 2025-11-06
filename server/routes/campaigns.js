@@ -248,6 +248,83 @@ router.get('/user/my-campaigns', auth, async (req, res) => {
   }
 });
 
+// Get verified campaigns with enhanced filters
+router.get('/verified', async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 12, 
+      category, 
+      search, 
+      location,
+      school,
+      minAmount,
+      maxAmount,
+      sort = 'createdAt'
+    } = req.query;
+    
+    const query = { 
+      status: 'active',
+      'verificationStatus.overallStatus': 'verified'
+    };
+    
+    if (category) query.category = category;
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { 'institutionDetails.institutionName': { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Location filter (you'll need to add location to your Campaign model)
+    if (location) {
+      query['studentProfile.location'] = { $regex: location, $options: 'i' };
+    }
+
+    // School filter
+    if (school) {
+      query['institutionDetails.institutionName'] = { $regex: school, $options: 'i' };
+    }
+
+    // Amount range filter
+    if (minAmount || maxAmount) {
+      query.targetAmount = {};
+      if (minAmount) query.targetAmount.$gte = parseFloat(minAmount);
+      if (maxAmount) query.targetAmount.$lte = parseFloat(maxAmount);
+    }
+
+    // Sort options
+    let sortOption = { createdAt: -1 };
+    if (sort === 'currentAmount') sortOption = { currentAmount: -1 };
+    if (sort === 'deadline') sortOption = { deadline: 1 };
+    if (sort === 'urgency') sortOption = { deadline: 1, currentAmount: -1 };
+    if (sort === 'recent') sortOption = { createdAt: -1 };
+
+    const campaigns = await Campaign.find(query)
+      .populate('student', 'name email')
+      .populate('student.studentProfile')
+      .sort(sortOption)
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Campaign.countDocuments(query);
+
+    res.json({
+      campaigns,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        total,
+        limit: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Update campaign
 router.put('/:id', auth, async (req, res) => {
   try {

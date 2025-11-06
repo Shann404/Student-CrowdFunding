@@ -1,111 +1,149 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-
-const API_URL = import.meta.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 // Async thunks
-export const createDonation = createAsyncThunk(
-  'donations/createDonation',
-  async (donationData, { rejectWithValue, getState }) => {
-    try {
-      const token = getState().auth.token;
-      const response = await axios.post(`${API_URL}/donations`, donationData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response.data);
-    }
-  }
-);
-
 export const fetchCampaignDonations = createAsyncThunk(
   'donations/fetchCampaignDonations',
   async (campaignId, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/donations/campaign/${campaignId}`);
-      return response.data;
+      const response = await fetch(`/api/donations/campaign/${campaignId}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.message);
     }
   }
 );
 
 export const fetchUserDonations = createAsyncThunk(
   'donations/fetchUserDonations',
-  async (_, { rejectWithValue, getState }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const token = getState().auth.token;
-      const response = await axios.get(`${API_URL}/donations/my-donations`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      return response.data;
+      const response = await fetch('/api/donations/user');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.message);
     }
   }
 );
 
 export const fetchDonationStats = createAsyncThunk(
   'donations/fetchDonationStats',
-  async (_, { rejectWithValue, getState }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const token = getState().auth.token;
-      const response = await axios.get(`${API_URL}/donations/stats`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      return response.data;
+      const response = await fetch('/api/donations/stats');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.message);
     }
   }
 );
 
+export const createDonation = createAsyncThunk(
+  'donations/createDonation',
+  async (donationData, { rejectWithValue }) => {
+    try {
+      const response = await fetch('/api/donations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(donationData)
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// Initial state
+const initialState = {
+  campaignDonations: [],
+  userDonations: [],
+  stats: {
+    totalDonations: 0,
+    totalAmount: 0
+  },
+  loading: false,
+  error: null,
+  creating: false,
+  createError: null
+};
+
+// Slice
 const donationSlice = createSlice({
   name: 'donations',
-  initialState: {
-    donations: [],
-    userDonations: [],
-    campaignDonations: [],
-    stats: {},
-    loading: false,
-    error: null
-  },
+  initialState,
   reducers: {
     clearError: (state) => {
       state.error = null;
+      state.createError = null;
     },
     clearDonations: (state) => {
-      state.donations = [];
       state.campaignDonations = [];
+      state.userDonations = [];
     }
   },
   extraReducers: (builder) => {
     builder
-      // Create donation
-      .addCase(createDonation.pending, (state) => {
+      // Fetch campaign donations
+      .addCase(fetchCampaignDonations.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(createDonation.fulfilled, (state, action) => {
+      .addCase(fetchCampaignDonations.fulfilled, (state, action) => {
         state.loading = false;
-        state.donations.unshift(action.payload.donation);
+        state.campaignDonations = action.payload;
       })
-      .addCase(createDonation.rejected, (state, action) => {
+      .addCase(fetchCampaignDonations.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-      // Fetch campaign donations
-      .addCase(fetchCampaignDonations.fulfilled, (state, action) => {
-        state.campaignDonations = action.payload;
-      })
       // Fetch user donations
+      .addCase(fetchUserDonations.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchUserDonations.fulfilled, (state, action) => {
+        state.loading = false;
         state.userDonations = action.payload;
+      })
+      .addCase(fetchUserDonations.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
       // Fetch donation stats
       .addCase(fetchDonationStats.fulfilled, (state, action) => {
         state.stats = action.payload;
+      })
+      // Create donation
+      .addCase(createDonation.pending, (state) => {
+        state.creating = true;
+        state.createError = null;
+      })
+      .addCase(createDonation.fulfilled, (state, action) => {
+        state.creating = false;
+        // Add to campaign donations if viewing a campaign
+        state.campaignDonations.unshift(action.payload.donation);
+        // Add to user donations if user is logged in
+        if (action.payload.donation.donor) {
+          state.userDonations.unshift(action.payload.donation);
+        }
+        // Update stats
+        state.stats.totalDonations += 1;
+        state.stats.totalAmount += action.payload.donation.amount;
+      })
+      .addCase(createDonation.rejected, (state, action) => {
+        state.creating = false;
+        state.createError = action.payload;
       });
   }
 });

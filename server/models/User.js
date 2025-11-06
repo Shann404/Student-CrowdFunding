@@ -44,7 +44,30 @@ const userSchema = new mongoose.Schema({
    studentProfile: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'StudentProfile'
-  }
+  },
+   isSuspended: {
+    type: Boolean,
+    default: false
+  },
+  flags: [{
+    reason: String,
+    severity: {
+      type: String,
+      enum: ['low', 'medium', 'high']
+    },
+    flaggedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    flaggedAt: {
+      type: Date,
+      default: Date.now
+    },
+    resolved: {
+      type: Boolean,
+      default: false
+    }
+  }]
 }, {
   timestamps: true
 });

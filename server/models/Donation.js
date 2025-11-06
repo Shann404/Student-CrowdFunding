@@ -36,10 +36,16 @@ const donationSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  fee: {
-    type: Number,
-    default: 0
-  }
+  message: String,
+  feeAmount: Number,
+  netAmount: Number,
+  receiptUrl: String,
+  refunds: [{
+    amount: Number,
+    reason: String,
+    processedAt: Date,
+    adminNotes: String
+  }]
 }, {
   timestamps: true
 });

@@ -88,6 +88,35 @@ router.post('/', auth, async (req, res) => {
       isAnonymous
     });
 
+    let donor = await Donor.findOne({ user: req.user.id });
+if (!donor) {
+  donor = new Donor({
+    user: req.user.id,
+    totalDonated: 0,
+    campaignsSupported: []
+  });
+}
+
+// Update total donated
+donor.totalDonated += parseFloat(amount);
+
+// Update campaigns supported
+const existingCampaignSupport = donor.campaignsSupported.find(
+  support => support.campaign.toString() === campaignId
+);
+
+if (existingCampaignSupport) {
+  existingCampaignSupport.totalAmount += parseFloat(amount);
+  existingCampaignSupport.lastDonation = new Date();
+} else {
+  donor.campaignsSupported.push({
+    campaign: campaignId,
+    totalAmount: parseFloat(amount),
+    firstDonation: new Date(),
+    lastDonation: new Date()
+  });
+}
+
     await donation.save();
     await donation.populate('donor', 'name profilePicture');
     await donation.populate('campaign', 'title');
