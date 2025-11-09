@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
+// Existing async thunks...
 export const fetchAdminStats = createAsyncThunk(
   'admin/fetchStats',
   async (_, { rejectWithValue }) => {
@@ -161,11 +162,78 @@ export const toggleUserSuspension = createAsyncThunk(
   }
 );
 
+// NEW: Fetch student profiles with their campaigns
+export const fetchStudentProfiles = createAsyncThunk(
+  'admin/fetchStudentProfiles',
+  async (filters = {}, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams(filters);
+      const response = await fetch(`/api/students/admin/profiles?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// NEW: Fetch all campaigns with detailed information
+export const fetchAllCampaignsWithDetails = createAsyncThunk(
+  'admin/fetchAllCampaignsWithDetails',
+  async (filters = {}, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const params = new URLSearchParams(filters);
+      const response = await fetch(`/api/campaigns/admin/all-campaigns?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// NEW: Verify student profile
+export const verifyStudentProfile = createAsyncThunk(
+  'admin/verifyStudentProfile',
+  async ({ studentId, action, notes }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/students/admin/${studentId}/verify`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action, notes })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const adminSlice = createSlice({
   name: 'admin',
   initialState: {
     stats: null,
     pendingCampaigns: [],
+    studentProfiles: [], // NEW: Student profiles state
+    allCampaigns: [], // NEW: All campaigns with details state
     users: [],
     donations: [],
     analytics: null,
@@ -176,6 +244,14 @@ const adminSlice = createSlice({
   reducers: {
     clearAdminError: (state) => {
       state.error = null;
+    },
+    // NEW: Clear student profiles (optional)
+    clearStudentProfiles: (state) => {
+      state.studentProfiles = [];
+    },
+    // NEW: Clear all campaigns (optional)
+    clearAllCampaigns: (state) => {
+      state.allCampaigns = [];
     }
   },
   extraReducers: (builder) => {
@@ -193,33 +269,158 @@ const adminSlice = createSlice({
         state.error = action.payload;
       })
       // Fetch pending campaigns
+      .addCase(fetchPendingCampaigns.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(fetchPendingCampaigns.fulfilled, (state, action) => {
-        state.pendingCampaigns = action.payload.campaigns;
-        state.pagination = action.payload.pagination;
+        state.loading = false;
+        state.pendingCampaigns = action.payload.campaigns || action.payload;
+        state.pagination = action.payload.pagination || {};
+      })
+      .addCase(fetchPendingCampaigns.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
       // Verify campaign
+      .addCase(verifyCampaign.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(verifyCampaign.fulfilled, (state, action) => {
+        state.loading = false;
         // Remove verified campaign from pending list
         state.pendingCampaigns = state.pendingCampaigns.filter(
           campaign => campaign._id !== action.payload.campaign._id
         );
+        // Also update in allCampaigns if it exists there
+        if (state.allCampaigns.length > 0) {
+          state.allCampaigns = state.allCampaigns.map(campaign =>
+            campaign._id === action.payload.campaign._id 
+              ? { ...campaign, status: action.payload.campaign.status }
+              : campaign
+          );
+        }
+      })
+      .addCase(verifyCampaign.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
       // Fetch users
+      .addCase(fetchUsers.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(fetchUsers.fulfilled, (state, action) => {
-        state.users = action.payload.users;
-        state.pagination = action.payload.pagination;
+        state.loading = false;
+        state.users = action.payload.users || action.payload;
+        state.pagination = action.payload.pagination || {};
+      })
+      .addCase(fetchUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
       // Fetch donations
+      .addCase(fetchDonations.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(fetchDonations.fulfilled, (state, action) => {
-        state.donations = action.payload.donations;
-        state.pagination = action.payload.pagination;
+        state.loading = false;
+        state.donations = action.payload.donations || action.payload;
+        state.pagination = action.payload.pagination || {};
+      })
+      .addCase(fetchDonations.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
       // Fetch analytics
+      .addCase(fetchAnalytics.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(fetchAnalytics.fulfilled, (state, action) => {
+        state.loading = false;
         state.analytics = action.payload;
+      })
+      .addCase(fetchAnalytics.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // NEW: Fetch student profiles
+      .addCase(fetchStudentProfiles.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchStudentProfiles.fulfilled, (state, action) => {
+        state.loading = false;
+        // Handle different response structures
+        state.studentProfiles = action.payload.studentProfiles || action.payload.data || action.payload;
+        state.pagination = action.payload.pagination || {};
+      })
+      .addCase(fetchStudentProfiles.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // NEW: Fetch all campaigns with details
+      .addCase(fetchAllCampaignsWithDetails.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchAllCampaignsWithDetails.fulfilled, (state, action) => {
+        state.loading = false;
+        // Handle different response structures
+        state.allCampaigns = action.payload.campaigns || action.payload.data || action.payload;
+        state.pagination = action.payload.pagination || {};
+      })
+      .addCase(fetchAllCampaignsWithDetails.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // NEW: Verify student profile
+      .addCase(verifyStudentProfile.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(verifyStudentProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        // Update student verification status in studentProfiles array
+        state.studentProfiles = state.studentProfiles.map(student =>
+          student._id === action.payload.student._id
+            ? { 
+                ...student, 
+                user: { 
+                  ...student.user, 
+                  isVerified: action.payload.student.user.isVerified 
+                } 
+              }
+            : student
+        );
+      })
+      .addCase(verifyStudentProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Flag entity
+      .addCase(flagEntity.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(flagEntity.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(flagEntity.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Toggle user suspension
+      .addCase(toggleUserSuspension.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(toggleUserSuspension.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(toggleUserSuspension.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   }
 });
 
-export const { clearAdminError } = adminSlice.actions;
+export const { 
+  clearAdminError, 
+  clearStudentProfiles, 
+  clearAllCampaigns 
+} = adminSlice.actions;
 export default adminSlice.reducer;

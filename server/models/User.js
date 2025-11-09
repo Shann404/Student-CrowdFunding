@@ -66,7 +66,11 @@ const userSchema = new mongoose.Schema({
     resolved: {
       type: Boolean,
       default: false
-    }
+    },
+  }],
+  campaigns: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Campaign'
   }]
 }, {
   timestamps: true

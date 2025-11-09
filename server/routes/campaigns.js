@@ -248,6 +248,65 @@ router.get('/user/my-campaigns', auth, async (req, res) => {
   }
 });
 
+// In your campaign routes
+router.get('/admin/all-campaigns', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { 
+      page = 1, 
+      limit = 50, 
+      status = '', 
+      search = '' 
+    } = req.query;
+    
+    const skip = (page - 1) * limit;
+
+    // Build filter query
+    let filterQuery = {};
+    if (status) {
+      filterQuery.status = status;
+    }
+    if (search) {
+      filterQuery.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { institutionName: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const campaigns = await Campaign.find(filterQuery)
+      .populate('student', 'name email')
+      .populate({
+        path: 'student',
+        populate: {
+          path: 'studentProfile',
+          model: 'StudentProfile',
+          select: 'school course studentId'
+        }
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Campaign.countDocuments(filterQuery);
+
+    res.json({
+      campaigns,
+      pagination: {
+        current: page,
+        pages: Math.ceil(total / limit),
+        total
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching all campaigns:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get verified campaigns with enhanced filters
 router.get('/verified', async (req, res) => {
   try {

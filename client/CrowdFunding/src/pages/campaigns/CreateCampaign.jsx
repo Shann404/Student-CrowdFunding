@@ -13,6 +13,7 @@ const CreateCampaign = () => {
   const { register, handleSubmit, formState: { errors }, watch } = useForm();
   const [images, setImages] = useState([]);
   const [documents, setDocuments] = useState([]);
+  const [studentIdImage, setStudentIdImage] = useState(null);
   const [hasProfile, setHasProfile] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [verificationStep, setVerificationStep] = useState(1);
@@ -51,6 +52,7 @@ const CreateCampaign = () => {
       targetAmount: parseFloat(data.targetAmount),
       images: images,
       documents: documents,
+      studentIdImage: studentIdImage, // Add student ID image to form data
       paymentVerified: data.paymentVerified || false,
       paymentMethod: paymentMethod
     };
@@ -69,6 +71,12 @@ const CreateCampaign = () => {
   const handleDocumentChange = (e) => {
     const files = Array.from(e.target.files);
     setDocuments(files);
+  };
+
+  const handleStudentIdImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setStudentIdImage(e.target.files[0]);
+    }
   };
 
   const nextStep = () => setVerificationStep(2);
@@ -376,6 +384,28 @@ const CreateCampaign = () => {
                     Upload official documents to verify your student status and fee requirements.
                   </p>
 
+                  {/* Student ID Image Upload */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Student ID Card (Image) *
+                    </label>
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png"
+                      onChange={handleStudentIdImageChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                    <p className="mt-1 text-sm text-gray-500">
+                      Upload a clear photo of your official student ID card
+                    </p>
+                    {studentIdImage && (
+                      <p className="mt-1 text-sm text-green-600">
+                        ✓ Student ID image selected: {studentIdImage.name}
+                      </p>
+                    )}
+                  </div>
+
                   {/* Fee Statement/Invoice */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -390,19 +420,6 @@ const CreateCampaign = () => {
                     <p className="mt-1 text-sm text-gray-500">
                       Must show your name, student ID, and detailed fee breakdown
                     </p>
-                  </div>
-
-                  {/* Student ID */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Student ID Card *
-                    </label>
-                    <input
-                      type="file"
-                      accept=".jpg,.jpeg,.png"
-                      onChange={handleDocumentChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
                   </div>
 
                   {/* Admission Letter (Optional but recommended) */}
@@ -645,7 +662,7 @@ const CreateCampaign = () => {
                   </button>
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || !studentIdImage}
                     className="flex-1 bg-yellow-400 text-white py-3 px-4 rounded-md hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition duration-300"
                   >
                     {loading ? 'Creating Campaign...' : 'Create Campaign'}
