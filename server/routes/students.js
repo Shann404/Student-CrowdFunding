@@ -47,19 +47,24 @@ router.get('/profile', auth, async (req, res) => {
     if (!studentProfile) {
       return res.status(404).json({ message: 'Student profile not found' });
     }
-
-    res.json(studentProfile);
+   res.json({
+      ...studentProfile.toObject(),
+      // Ensure image URLs are absolute
+      studentIdImage: studentProfile.studentIdImage ? {
+        ...studentProfile.studentIdImage,
+        url: `${req.protocol}://${req.get('host')}${studentProfile.studentIdImage.url}`
+      } : null
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Create or update student profile - UPDATED TO MATCH FRONTEND
+// Create or update student profile 
 router.post('/profile', [
   auth,
   upload.single('studentIdImage'), // Add file upload for student ID image
-  // Update validation to match flat field names from frontend
   body('studentId').notEmpty().withMessage('Student ID is required'),
   body('dateOfBirth').isISO8601().withMessage('Valid date of birth is required'),
   body('schoolName').notEmpty().withMessage('School name is required'), // Changed from school.name
@@ -212,27 +217,46 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// In your student routes (student.js)
 router.get('/admin/profiles', auth, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const { page = 1, limit = 50, search = '' } = req.query;
+    const { page = 1, limit = 50, search = '', status = '' } = req.query;
     const skip = (page - 1) * limit;
 
     // Build search query
     let searchQuery = {};
+    
+    // Text search
     if (search) {
-      searchQuery = {
-        $or: [
-          { studentId: { $regex: search, $options: 'i' } },
-          { 'school.name': { $regex: search, $options: 'i' } },
-          { 'course.name': { $regex: search, $options: 'i' } }
-        ]
-      };
+      searchQuery.$or = [
+        { studentId: { $regex: search, $options: 'i' } },
+        { 'school.name': { $regex: search, $options: 'i' } },
+        { 'course.name': { $regex: search, $options: 'i' } },
+        { 'user.name': { $regex: search, $options: 'i' } },
+        { 'user.email': { $regex: search, $options: 'i' } }
+      ];
     }
+
+    // Status filter - FIX: Add status filtering
+    if (status) {
+      if (status === 'pending') {
+        searchQuery.status = { $in: [null, 'pending'] };
+        searchQuery['user.isVerified'] = false;
+      } else if (status === 'verified') {
+        searchQuery.status = 'verified';
+        searchQuery['user.isVerified'] = true;
+      } else if (status === 'rejected') {
+        searchQuery.status = 'rejected';
+        searchQuery['user.isVerified'] = false;
+      }
+    }
+
+    console.log('=== FETCHING STUDENT PROFILES ===');
+    console.log('Search query:', JSON.stringify(searchQuery, null, 2));
+    console.log('Status filter:', status);
 
     const studentProfiles = await StudentProfile.find(searchQuery)
       .populate('user', 'name email isVerified createdAt')
@@ -244,14 +268,32 @@ router.get('/admin/profiles', auth, async (req, res) => {
           select: 'title status targetAmount amountRaised createdAt'
         }
       })
+      .populate('school', 'name type')
+      .populate('course', 'name duration yearOfStudy')
+      .select('+status +verifiedAt +rejectedAt +adminNotes') // FIX: Ensure status fields are included
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
     const total = await StudentProfile.countDocuments(searchQuery);
 
+    // Debug log the results
+    console.log(`Found ${studentProfiles.length} profiles`);
+    studentProfiles.forEach(profile => {
+      console.log(`Student: ${profile._id}, Status: ${profile.status}, User Verified: ${profile.user?.isVerified}`);
+    });
+
+    // Convert relative URLs to absolute URLs
+    const profilesWithAbsoluteUrls = studentProfiles.map(profile => ({
+      ...profile.toObject(),
+      studentIdImage: profile.studentIdImage ? {
+        ...profile.studentIdImage,
+        url: `${req.protocol}://${req.get('host')}${profile.studentIdImage.url}`
+      } : null
+    }));
+
     res.json({
-      studentProfiles,
+      studentProfiles: profilesWithAbsoluteUrls,
       pagination: {
         current: page,
         pages: Math.ceil(total / limit),
@@ -305,25 +347,79 @@ router.put('/admin/:studentId/verify', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-// Verify student (admin only)
+
+// This should already exist in your backend
 router.patch('/:id/verify', auth, async (req, res) => {
   try {
+    console.log('=== VERIFICATION REQUEST ===');
+    console.log('User:', req.user._id, 'Role:', req.user.role);
+    console.log('Student ID:', req.params.id);
+    console.log('Action:', req.body.action);
+    console.log('Notes:', req.body.notes);
+
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    const { action, notes } = req.body;
     const studentProfile = await StudentProfile.findById(req.params.id);
+    
     if (!studentProfile) {
+      console.log('Student profile not found');
       return res.status(404).json({ message: 'Student profile not found' });
     }
 
-    // Update user verification status
-    await User.findByIdAndUpdate(studentProfile.user, { isVerified: true });
+    console.log('Found student profile:', studentProfile._id);
+    console.log('Current status:', studentProfile.status);
+    console.log('Current user verification:', studentProfile.user?.isVerified);
 
-    res.json({ message: 'Student verified successfully' });
+    if (action === 'verify') {
+      // Update user verification status
+      await User.findByIdAndUpdate(studentProfile.user, { isVerified: true });
+      const updatedStudent = await StudentProfile.findByIdAndUpdate(
+        req.params.id, 
+        { 
+          status: 'verified',
+          verifiedAt: new Date()
+        },
+        { new: true }
+      ).populate('user');
+
+      console.log('Verified - New status:', updatedStudent.status);
+      
+      return res.json({ 
+        message: 'Student verified successfully',
+        student: updatedStudent
+      });
+    } else if (action === 'reject') {
+      // Update user verification status
+      await User.findByIdAndUpdate(studentProfile.user, { isVerified: false });
+      
+      // Mark as rejected
+      const updatedStudent = await StudentProfile.findByIdAndUpdate(
+        req.params.id, 
+        { 
+          status: 'rejected',
+          rejectedAt: new Date(),
+          adminNotes: notes || studentProfile.adminNotes
+        },
+        { new: true }
+      ).populate('user');
+
+      console.log('Rejected - New status:', updatedStudent.status);
+      console.log('Rejected - User verification:', updatedStudent.user?.isVerified);
+      
+      return res.json({ 
+        message: 'Student application rejected',
+        student: updatedStudent
+      });
+    } else {
+      return res.status(400).json({ message: 'Invalid action' });
+    }
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Verification error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

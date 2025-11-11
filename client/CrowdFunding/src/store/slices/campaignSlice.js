@@ -58,8 +58,13 @@ export const createCampaign = createAsyncThunk(
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
-    }
+console.error('Campaign creation error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        errors: error.response?.data?.errors,
+        message: error.response?.data?.message
+      });      
+      return rejectWithValue(error.response?.data || error.message);    }
   }
 );
 

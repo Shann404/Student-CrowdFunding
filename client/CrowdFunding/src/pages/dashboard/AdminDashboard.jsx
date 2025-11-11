@@ -10,6 +10,7 @@ import {
   fetchAllCampaignsWithDetails,
   verifyCampaign,
     verifyStudentProfile,
+    rejectStudentVerification,
   toggleUserSuspension,
   flagEntity
 } from '../../store/slices/adminSlice';
@@ -172,30 +173,32 @@ const OverviewTab = ({ stats, pendingCampaigns, studentProfiles, allCampaigns, l
           </div>
         </div>
 
-        {/* Recent Student Registrations */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Recent Student Registrations ({profilesArray.length})
-            </h3>
-          </div>
-          <div className="p-6">
-            {profilesArray.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">No student profiles found</p>
-            ) : (
-              <div className="space-y-3">
-                {profilesArray.slice(0, 5).map(student => (
-                  <div key={student._id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">{student.user?.name || 'Unknown'}</p>
-                      <p className="text-sm text-gray-600">{student.school?.name || 'No school'}</p>
-                      <p className="text-xs text-gray-500">{student.course?.name || 'No course'}</p>
-                    </div>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      student.user?.isVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {student.user?.isVerified ? 'Verified' : 'Pending'}
-                    </span>
+      {/* Recent Student Registrations */}
+<div className="bg-white shadow rounded-lg">
+  <div className="px-6 py-4 border-b border-gray-200">
+    <h3 className="text-lg font-semibold text-gray-900">
+      Recent Student Registrations ({profilesArray.length})
+    </h3>
+  </div>
+  <div className="p-6">
+    {profilesArray.length === 0 ? (
+      <p className="text-gray-500 text-center py-4">No student profiles found</p>
+    ) : (
+      <div className="space-y-3">
+        {profilesArray.slice(0, 5).map(student => (
+          <div key={student._id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+            <div>
+              <p className="font-medium text-gray-900">{student.user?.name || 'Unknown'}</p>
+              <p className="text-sm text-gray-600">{student.school?.name || 'No school'}</p>
+              <p className="text-xs text-gray-500">{student.course?.name || 'No course'}</p>
+            </div>
+            <span className={`px-2 py-1 text-xs rounded-full ${
+              student.status === 'rejected' ? 'bg-red-100 text-red-800' :
+              student.user?.isVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+            }`}>
+              {student.status === 'rejected' ? 'Rejected' :
+               student.user?.isVerified ? 'Verified' : 'Pending'}
+            </span>
                   </div>
                 ))}
               </div>
@@ -328,24 +331,42 @@ const StudentsTab = ({ studentProfiles, loading }) => {
     ? studentProfiles 
     : (studentProfiles?.studentProfiles || studentProfiles?.data || []);
 
-  // Filter students based on verification status
+   // CORRECTED: Filter students based on status and verification
   const filteredProfiles = profilesArray.filter(student => {
     if (filter === 'all') return true;
-    if (filter === 'pending') return !student.user?.isVerified;
-    if (filter === 'verified') return student.user?.isVerified;
+    if (filter === 'pending') return !student.user?.isVerified && student.status !== 'rejected';
+    if (filter === 'verified') return student.user?.isVerified && student.status !== 'rejected';
+    if (filter === 'rejected') return student.status === 'rejected';
     return true;
   });
 
-  const handleVerification = async (studentId, action, notes) => {
-    try {
-      const response = await dispatch(verifyStudentProfile({ studentId, action, notes })).unwrap();
+ const handleVerification = async (studentId, action, notes) => {
+  try {
+   console.log('Verification action:', action, 'for student:', studentId);
       
-      // Show success message (you can add a toast notification here)
-      console.log(`Student ${action}ed successfully:`, response.message);
+      if (action === 'reject') {
+        // Use rejectStudentVerification for rejection
+        const response = await dispatch(rejectStudentVerification({ 
+          studentId, 
+          action,
+          notes 
+        })).unwrap();
+        
+        console.log('Student rejected successfully:', response.message);
+      } else {
+        // Use verifyStudentProfile for verification
+        const response = await dispatch(verifyStudentProfile({ 
+          studentId, 
+          action, 
+          notes 
+        })).unwrap();
+        
+        console.log('Student verified successfully:', response.message);
+      }
+
       
     } catch (error) {
-      console.error('Error verifying student:', error);
-      // Show error message (you can add a toast notification here)
+      console.error('Error processing student verification:', error);
     }
   };
 
@@ -362,7 +383,7 @@ const StudentsTab = ({ studentProfiles, loading }) => {
       {/* Filter Controls */}
       <div className="bg-white shadow rounded-lg p-4">
         <div className="flex flex-wrap gap-2">
-          {['all', 'pending', 'verified'].map(status => (
+          {['all', 'pending', 'verified','rejected'].map(status => (
             <button
               key={status}
               onClick={() => setFilter(status)}
@@ -374,8 +395,9 @@ const StudentsTab = ({ studentProfiles, loading }) => {
             >
               {status} (
                 {status === 'all' ? profilesArray.length :
-                 status === 'pending' ? profilesArray.filter(s => !s.user?.isVerified).length :
-                 profilesArray.filter(s => s.user?.isVerified).length}
+                 status === 'pending' ? profilesArray.filter(s => !s.user?.isVerified && s.status !== 'rejected').length :
+           status === 'verified' ? profilesArray.filter(s => s.user?.isVerified).length :
+           profilesArray.filter(s => s.status === 'rejected').length}
               )
             </button>
           ))}
@@ -457,9 +479,11 @@ const StudentProfileCard = ({ student, onViewDetails, onVerification }) => {
             <div className="flex items-center space-x-3 mb-2">
               <h4 className="font-semibold text-gray-900">{user?.name || 'Unknown'}</h4>
               <span className={`px-2 py-1 text-xs rounded-full ${
+                    student.status === 'rejected' ? 'bg-red-100 text-red-800' :
                 user?.isVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
               }`}>
-                {user?.isVerified ? 'Verified' : 'Pending Verification'}
+                    {student.status === 'rejected' ? 'Rejected' : 
+                user?.isVerified ? 'Verified' : 'Pending Verification'}
               </span>
             </div>
             
@@ -490,22 +514,27 @@ const StudentProfileCard = ({ student, onViewDetails, onVerification }) => {
             </button>
             
             {/* Verification buttons - only show for unverified students */}
-            {!user?.isVerified && (
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => openVerificationModal('verify')}
-                  className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition duration-300"
-                >
-                  Verify
-                </button>
-                <button
-                  onClick={() => openVerificationModal('reject')}
-                  className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition duration-300"
-                >
-                  Reject
-                </button>
-              </div>
-            )}
+           {!user?.isVerified && student.status !== 'rejected' && (
+            <div className="flex space-x-2">
+              <button
+                onClick={() => openVerificationModal('verify')}
+                className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition duration-300"
+              >
+                Verify
+              </button>
+              <button
+                onClick={() => openVerificationModal('reject')}
+                className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition duration-300"
+              >
+                Reject
+              </button>
+            </div>
+          )}
+
+          {/* Show message for rejected students */}
+          {student.status === 'rejected' && (
+            <span className="text-red-600 text-sm font-medium">Profile Rejected</span>
+          )}
           </div>
         </div>
       </div>
@@ -562,29 +591,62 @@ const StudentDetailsModal = ({ student, onClose }) => {
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [action, setAction] = useState('');
   const [notes, setNotes] = useState('');
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
-  const handleVerification = async () => {
-    try {
-      const response = await dispatch(verifyStudentProfile({ 
+  // In StudentDetailsModal component, update the handleVerification function:
+const handleVerification = async () => {
+  try {
+    let response;
+    
+    if (action === 'reject') {
+      // Use rejectStudentVerification for rejection
+      response = await dispatch(rejectStudentVerification({ 
+        studentId: student._id, 
+        notes 
+      })).unwrap();
+    } else {
+      // Use verifyStudentProfile for verification
+      response = await dispatch(verifyStudentProfile({ 
         studentId: student._id, 
         action, 
         notes 
       })).unwrap();
-      
-      console.log(`Student ${action}ed successfully:`, response.message);
-      setShowVerificationModal(false);
-      setNotes('');
-      onClose(); // Close the modal after verification
-      
-    } catch (error) {
-      console.error('Error verifying student:', error);
     }
-  };
+    
+    console.log(`Student ${action}ed successfully:`, response.message);
+    setShowVerificationModal(false);
+    setNotes('');
+    onClose(); // Close the modal after verification
+    
+  } catch (error) {
+    console.error('Error verifying student:', error);
+  }
+};
 
   const openVerificationModal = (verificationAction) => {
     setAction(verificationAction);
     setShowVerificationModal(true);
   };
+
+   const handleImageLoad = () => {
+    setImageLoading(false);
+  };
+
+  const handleImageError = () => {
+    setImageLoading(false);
+    setImageError(true);
+  };
+
+  // Get the correct image URL based on your data structure
+  const getStudentIdImageUrl = () => {
+    // Try different possible locations for the student ID image
+    return student.studentIdImage?.url || 
+           student.academicDocuments?.studentIdCard?.url || 
+           student.studentIdCard?.url;
+  };
+
+  const studentIdImageUrl = getStudentIdImageUrl();
 
   return (
     <>
@@ -595,9 +657,11 @@ const StudentDetailsModal = ({ student, onClose }) => {
               <div className="flex items-center space-x-3">
                 <h3 className="text-lg font-semibold text-gray-900">Student Profile Details</h3>
                 <span className={`px-2 py-1 text-xs rounded-full ${
+                  student.status === 'rejected' ? 'bg-red-100 text-red-800' :
                   user?.isVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                 }`}>
-                  {user?.isVerified ? 'Verified' : 'Pending Verification'}
+                  {student.status === 'rejected' ? 'Rejected' :
+                   user?.isVerified ? 'Verified' : 'Pending Verification'}
                 </span>
               </div>
               <button
@@ -695,48 +759,116 @@ const StudentDetailsModal = ({ student, onClose }) => {
               </div>
             )}
 
-            {/* Student ID Image */}
-            {student.academicDocuments?.studentIdCard?.url && (
-              <div className="mt-6">
-                <h4 className="font-semibold text-gray-900 mb-4">Student ID Verification</h4>
-                <div className="border border-gray-200 rounded-lg p-4">
-                  <img
-                    src={student.academicDocuments.studentIdCard.url}
-                    alt="Student ID"
-                    className="max-w-xs max-h-64 object-contain mx-auto"
-                  />
-                </div>
+          {/* Student ID Image Section */}
+            <div className="mt-6">
+              <h4 className="font-semibold text-gray-900 mb-4">Student ID Verification</h4>
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                {studentIdImageUrl ? (
+                  <div className="text-center">
+                    <div className="relative inline-block">
+                      {imageLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                        </div>
+                      )}
+                      <img
+                        src={`http://localhost:5000${student.academicDocuments?.studentIdCard?.url}`}
+                        alt="Student ID Card"
+                        onLoad={handleImageLoad}
+                        onError={handleImageError}
+                        className={`max-w-full max-h-96 object-contain mx-auto rounded-lg shadow-sm ${
+                          imageLoading ? 'opacity-0' : 'opacity-100'
+                        } transition-opacity duration-300`}
+                      />
+                    </div>
+                    
+                    {imageError ? (
+                    <div className="text-center py-4 text-red-600">
+                      <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      <p>Failed to load student ID image</p>
+                    </div>
+                  ) : (
+                    <>
+                     
+                      <p className="text-sm text-gray-500 mt-2">
+                        Uploaded: {
+                          student.academicDocuments?.studentIdCard?.url
+                            ? new Date(parseInt(student.academicDocuments.studentIdCard.url.match(/\d+/)?.[0])).toLocaleDateString()
+                            : 'Date not available'
+                        }
+                      </p>
+
+                        <div className="mt-4 flex space-x-2 justify-center">
+                          <button
+                            onClick={() => window.open(`http://localhost:5000${student.academicDocuments?.studentIdCard?.url}`, '_blank')}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm"
+                          >
+                            Open Full Size
+                          </button>
+                          <button
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = studentIdImageUrl;
+                              link.download = `student-id-${user?.name || 'unknown'}.jpg`;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
+                            className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors text-sm"
+                          >
+                            Download
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p>No Student ID Image Available</p>
+                    <p className="text-sm mt-1">Student has not uploaded their ID card</p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
           
           <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
             <div className="flex justify-between items-center">
               <div>
-                {!user?.isVerified && (
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => openVerificationModal('verify')}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300"
-                    >
-                      Verify Student
-                    </button>
-                    <button
-                      onClick={() => openVerificationModal('reject')}
-                      className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition duration-300"
-                    >
-                      Reject Profile
-                    </button>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={onClose}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition duration-300"
-              >
-                Close
-              </button>
+                  {!user?.isVerified && student.status !== 'rejected' && (
+      <div className="flex space-x-2">
+        <button
+          onClick={() => openVerificationModal('verify')}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300"
+        >
+          Verify Student
+        </button>
+        <button
+          onClick={() => openVerificationModal('reject')}
+          className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition duration-300"
+        >
+          Reject Profile
+        </button>
+      </div>
+          )}
+          {student.status === 'rejected' && (
+            <div className="text-red-600 font-medium">
+              This profile has been rejected
             </div>
+          )}
+        </div>
+        <button
+          onClick={onClose}
+          className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition duration-300"
+        >
+          Close
+        </button>
+      </div> 
           </div>
         </div>
       </div>

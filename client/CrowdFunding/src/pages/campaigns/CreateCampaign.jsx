@@ -10,7 +10,7 @@ const CreateCampaign = () => {
   const { loading, error } = useSelector(state => state.campaigns);
   const { user } = useSelector(state => state.auth);
   
-  const { register, handleSubmit, formState: { errors }, watch } = useForm();
+  const { register, handleSubmit, formState: { errors }, watch } = useForm({ shouldUnregister: false });
   const [images, setImages] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [studentIdImage, setStudentIdImage] = useState(null);
@@ -18,6 +18,7 @@ const CreateCampaign = () => {
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [verificationStep, setVerificationStep] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('bank');
+
 
   // Check if student profile exists
   useEffect(() => {
@@ -47,21 +48,35 @@ const CreateCampaign = () => {
   }, [user]);
 
   const onSubmit = async (data) => {
-    const formData = {
+  try {
+    const campaignData = {
       ...data,
-      targetAmount: parseFloat(data.targetAmount),
-      images: images,
-      documents: documents,
-      studentIdImage: studentIdImage, // Add student ID image to form data
+      paymentMethod,
       paymentVerified: data.paymentVerified || false,
-      paymentMethod: paymentMethod
+      bankName: data.bankName,
+      branch: data.branch,
+      accountName: data.accountName,
+      accountNumber: data.accountNumber,
+      swiftCode: data.swiftCode,
+      currency: data.currency,
+      paymentReference: data.paymentReference,
+      paymentPortalUrl: data.paymentPortalUrl,
+      onlinePaymentInstructions: data.onlinePaymentInstructions,
+      onlineReference: data.onlineReference,
+      images,
+      documents,
+      studentIdImage,
     };
 
-    const result = await dispatch(createCampaign(formData));
+    const result = await dispatch(createCampaign(campaignData));
     if (result.type === 'campaigns/createCampaign/fulfilled') {
       navigate('/dashboard');
     }
-  };
+  } catch (error) {
+    console.error('Form submission error:', error);
+  }
+};
+
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);

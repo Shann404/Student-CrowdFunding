@@ -11,6 +11,14 @@ const studentProfileSchema = new mongoose.Schema({
     required: [true, 'Student ID is required'],
     unique: true
   },
+  status: {
+    type: String,
+    enum: ['pending', 'verified', 'rejected'],
+    default: 'pending'
+  },
+  verifiedAt: Date,
+  rejectedAt: Date,
+  adminNotes: String,
   dateOfBirth: {
     type: Date,
     required: [true, 'Date of birth is required']

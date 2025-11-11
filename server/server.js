@@ -26,10 +26,11 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/students', require('./routes/students'));
 app.use('/api/campaigns', require('./routes/campaigns'));
 app.use('/api/donations', require('./routes/donations'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/students', require('./routes/students'));
+
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/donors',  require('./routes/donors'));
 

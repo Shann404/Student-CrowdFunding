@@ -227,6 +227,37 @@ export const verifyStudentProfile = createAsyncThunk(
   }
 );
 
+// In your adminSlice.js - UPDATE the rejectStudentVerification thunk
+export const rejectStudentVerification = createAsyncThunk(
+  'admin/rejectStudentVerification',
+  async ({ studentId, notes = '' }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/students/${studentId}/verify`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          action: 'reject', 
+          notes 
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Request failed');
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const adminSlice = createSlice({
   name: 'admin',
   initialState: {
@@ -370,26 +401,67 @@ const adminSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // NEW: Verify student profile
+       // Verify student profile - FIXED VERSION
       .addCase(verifyStudentProfile.pending, (state) => {
         state.loading = true;
       })
       .addCase(verifyStudentProfile.fulfilled, (state, action) => {
         state.loading = false;
-        // Update student verification status in studentProfiles array
-        state.studentProfiles = state.studentProfiles.map(student =>
-          student._id === action.payload.student._id
-            ? { 
-                ...student, 
-                user: { 
-                  ...student.user, 
-                  isVerified: action.payload.student.user.isVerified 
-                } 
-              }
-            : student
-        );
+        const { studentId, action: verificationAction } = action.meta.arg;
+        
+        if (verificationAction === 'reject') {
+           // Update the student status to rejected instead of removing
+    state.studentProfiles = state.studentProfiles.map(student =>
+      student._id === studentId
+        ? { 
+            ...student, 
+            status: 'rejected',
+            rejectedAt: new Date().toISOString(),
+            // Also update user verification status if needed
+            user: student.user ? { ...student.user, isVerified: false } : student.user
+          }
+        : student
+          );
+        } else if (verificationAction === 'verify') {
+          // Update the verification status for verified students
+          state.studentProfiles = state.studentProfiles.map(student =>
+            student._id === studentId
+              ? { 
+                  ...student, 
+                  user: { 
+                    ...student.user, 
+                    isVerified: true 
+                  } 
+                }
+              : student
+          );
+        }
       })
       .addCase(verifyStudentProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Reject student verification - NEW HANDLER
+      .addCase(rejectStudentVerification.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(rejectStudentVerification.fulfilled, (state, action) => {
+        state.loading = false;
+       // Access studentId from the meta.arg object
+     const { studentId } = action.meta.arg;
+        
+        // Update the student status to rejected instead of removing
+  state.studentProfiles = state.studentProfiles.map(student =>
+    student._id === studentId
+      ? { 
+          ...student, 
+          status: 'rejected',
+          rejectedAt: new Date().toISOString()
+        }
+      : student
+  );
+      })
+      .addCase(rejectStudentVerification.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

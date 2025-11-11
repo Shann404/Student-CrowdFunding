@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 10 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|pdf/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -39,7 +39,8 @@ router.post('/', [
   auth,
   upload.fields([
     { name: 'images', maxCount: 5 },
-    { name: 'documents', maxCount: 10 }
+    { name: 'documents', maxCount: 10 },
+    { name: 'studentIdImage', maxCount: 1 }
   ]),
   body('title').trim().isLength({ min: 10 }).withMessage('Title must be at least 10 characters'),
   body('description').trim().isLength({ min: 50 }).withMessage('Description must be at least 50 characters'),
