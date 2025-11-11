@@ -79,19 +79,19 @@ Stripe / PayPal / Flutterwave accounts for payments
 
 # Installation
 
-Clone the repository
+1. Clone the repository
 
 git clone https://github.com/yourusername/student-crowdfunding.git
 
 cd student-crowdfunding
 
-Install backend dependencies
+2. Install backend dependencies
 
 cd server
 
 npm install
 
-Install frontend dependencies
+3. Install frontend dependencies
 
 cd client
 
@@ -99,37 +99,50 @@ cd CrowdFunding
 
 npm install
 
-Set up environment variables
+4. Set up environment variables
 
-Create a .env file in the server folder:
+- Create a .env file in the server folder:
 
 NODE_ENV=development
+
 PORT=5000
+
 MONGODB_URI=mongodb://localhost:27017/student-crowdfunding
+
 JWT_SECRET=your_super_secret_jwt_key_here
+
 STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+
 STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+
 STRIPE_CONNECT_ACCOUNT_ID=acct_your_connect_account_id
+
 CLOUDINARY_CLOUD_NAME=your_cloudinary_name
+
 CLOUDINARY_API_KEY=your_cloudinary_api_key
+
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
 EMAIL_SERVICE=gmail
+
 EMAIL_USER=your_email@gmail.com
+
 EMAIL_PASS=your_app_password
 
-Create a .env file in the client folder:
+- Create a .env file in the client folder:
 
 VITE_API_URL=http://localhost:5000/api
+
 REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
 
-Start the backend server
+6. Start the backend server
 
 cd sever
 
 npm run dev
 
 
-Start the frontend
+7.  Start the frontend
 
 cd client
 
