@@ -150,15 +150,15 @@ const CreateCampaign = () => {
           
           {/* Verification Steps Indicator */}
           <div className="flex items-center justify-between mb-8">
-            <div className={`flex items-center ${verificationStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${verificationStep >= 1 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'}`}>
+            <div className={`flex items-center ${verificationStep >= 1 ? 'text-yellow-500' : 'text-yellow-500'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${verificationStep >= 1 ? 'bg-yellow-500 border-yellow-500 text-white' : 'border-gray-300'}`}>
                 1
               </div>
               <span className="ml-2 text-sm font-medium">Campaign Details</span>
             </div>
             <div className="flex-1 h-1 bg-gray-200 mx-4"></div>
-            <div className={`flex items-center ${verificationStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${verificationStep >= 2 ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'}`}>
+            <div className={`flex items-center ${verificationStep >= 2 ? 'text-yellow-500' : 'text-yellow-500'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${verificationStep <= 2 ? 'bg-yellow-500 border-yellow-500 text-white' : 'border-gray-300'}`}>
                 2
               </div>
               <span className="ml-2 text-sm font-medium">Verification</span>
@@ -182,7 +182,7 @@ const CreateCampaign = () => {
                         message: 'Title must be at least 10 characters'
                       }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-300"
                     placeholder="E.g., Support my Computer Science Degree at University of Technology"
                   />
                   {errors.title && (
@@ -204,7 +204,7 @@ const CreateCampaign = () => {
                       }
                     })}
                     rows={6}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-300"
                     placeholder="Tell your story... Why do you need funding? What are your academic goals?"
                   />
                   {errors.description && (
@@ -219,7 +219,7 @@ const CreateCampaign = () => {
                   </label>
                   <select
                     {...register('category', { required: 'Category is required' })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-300"
                   >
                     <option value="">Select a category</option>
                     <option value="tuition">Tuition Fees</option>
@@ -248,7 +248,7 @@ const CreateCampaign = () => {
                         message: 'Target amount must be at least $1'
                       }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-300"
                     placeholder="5000"
                   />
                   {errors.targetAmount && (
@@ -272,7 +272,7 @@ const CreateCampaign = () => {
                         return selectedDate > today || 'Deadline must be in the future';
                       }
                     })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-300"
                   />
                   {errors.deadline && (
                     <p className="mt-1 text-sm text-red-600">{errors.deadline.message}</p>
@@ -282,7 +282,7 @@ const CreateCampaign = () => {
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition duration-300"
+                  className="w-full bg-yellow-400 text-white py-3 px-4 rounded-md hover:bg-yellow-500 transition duration-300"
                 >
                   Continue to Verification
                 </button>
@@ -292,11 +292,11 @@ const CreateCampaign = () => {
             {verificationStep === 2 && (
               <>
                 {/* Institution Payment Details */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-                  <h3 className="text-lg font-semibold text-blue-800 mb-4">
-                    🎓 Institution Payment Verification
+                <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-black-800 mb-4">
+                    Institution Payment Verification
                   </h3>
-                  <p className="text-blue-700 mb-4">
+                  <p className="text-black-200 mb-4">
                     To prevent fraud and ensure funds are used for educational purposes, 
                     please provide official payment details from your institution.
                   </p>
@@ -341,9 +341,9 @@ const CreateCampaign = () => {
                 </div>
 
                 {/* Fee Structure & Balance */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-                  <h3 className="text-lg font-semibold text-green-800 mb-4">
-                    💰 Fee Structure & Outstanding Balance
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold text-black-800 mb-4">
+                      Fee Structure & Outstanding Balance
                   </h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -383,7 +383,7 @@ const CreateCampaign = () => {
                   <div className="bg-white p-4 rounded border">
                     <div className="flex justify-between items-center font-semibold">
                       <span>Outstanding Balance:</span>
-                      <span className="text-red-600">
+                      <span className="text-yellow-500">
                         ${(watch('totalFees') - watch('amountPaid') || 0).toFixed(2)}
                       </span>
                     </div>
@@ -392,10 +392,10 @@ const CreateCampaign = () => {
 
                 {/* Official Documents Upload */}
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-                  <h3 className="text-lg font-semibold text-yellow-800 mb-4">
-                    📄 Required Verification Documents
+                  <h3 className="text-lg font-semibold text-black-800 mb-4">
+                    Required Verification Documents
                   </h3>
-                  <p className="text-yellow-700 mb-4">
+                  <p className="text-black-200 mb-4">
                     Upload official documents to verify your student status and fee requirements.
                   </p>
 
@@ -452,9 +452,9 @@ const CreateCampaign = () => {
                 </div>
 
                 {/* Institution Payment Instructions */}
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 mb-6">
-                  <h3 className="text-lg font-semibold text-purple-800 mb-4">
-                    🏦 Institution Payment Instructions
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+                  <h3 className="text-lg font-semibold tex-black-800 mb-4">
+                    Institution Payment Instructions
                   </h3>
                   
                   {/* Payment Method Selection */}
@@ -468,8 +468,8 @@ const CreateCampaign = () => {
                         onClick={() => setPaymentMethod('bank')}
                         className={`p-4 border-2 rounded-lg text-center transition-colors ${
                           paymentMethod === 'bank' 
-                            ? 'border-purple-500 bg-purple-50 text-purple-700' 
-                            : 'border-gray-300 bg-white text-gray-700 hover:border-purple-300'
+                            ? 'border-yellow-300 bg-yellow-100 text-black-700' 
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-yellow-300'
                         }`}
                       >
                         <div className="font-medium">Bank Transfer</div>
@@ -480,8 +480,8 @@ const CreateCampaign = () => {
                         onClick={() => setPaymentMethod('online')}
                         className={`p-4 border-2 rounded-lg text-center transition-colors ${
                           paymentMethod === 'online' 
-                            ? 'border-purple-500 bg-purple-50 text-purple-700' 
-                            : 'border-gray-300 bg-white text-gray-700 hover:border-purple-300'
+                            ? 'border-yellow-300 bg-yellow-100 text-black-700' 
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-yellow-300'
                         }`}
                       >
                         <div className="font-medium">Online Portal</div>
