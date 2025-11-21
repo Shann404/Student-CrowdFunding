@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_URL = import.meta.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.REACT_APP_API_URL || 'https://student-crowdfunding.onrender.com/';
 
 // Async thunks
 export const fetchCampaigns = createAsyncThunk(
