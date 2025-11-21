@@ -30,7 +30,6 @@ app.use('/api/campaigns', require('./routes/campaigns'));
 app.use('/api/donations', require('./routes/donations'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/students', require('./routes/students'));
-
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/donors',  require('./routes/donors'));
 
@@ -46,7 +45,7 @@ app.use((error, req, res, next) => {
 });
 
 // MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/student-crowdfunding', {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://Student-crowdfunding:SNB23022005@cluster0.j9blkag.mongodb.net/student-crowdfunding?appName=Cluster0', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
