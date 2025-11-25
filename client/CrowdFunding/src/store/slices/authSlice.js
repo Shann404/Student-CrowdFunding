@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
 // Fixed environment variable - use VITE_ prefix for Vite
-const API_URL = import.meta.env.VITE_API_URL || 'https://student-crowdfunding.onrender.com/';
+const API_URL = import.meta.env.VITE_API_URL || 'https://student-crowdfunding.onrender.com/api';
 
 console.log('API URL:', API_URL); // Debug log
 
