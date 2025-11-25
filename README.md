@@ -7,7 +7,7 @@ A secure, scalable, and transparent student crowdfunding platform where students
 ## Live Demo
 
 Frontend Live URL:  
-https://student-crowd-funding-5s0tlldhw-shann404s-projects.vercel.app/
+https://student-crowdfunding-1.onrender.com/
 
 Backend API URL:  
 https://student-crowdfunding.onrender.com/
